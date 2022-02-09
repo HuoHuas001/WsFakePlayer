@@ -12,7 +12,7 @@ namespace WsFakePlayer
 {
     public class Class1
     {
-		public static int FakePlayerNum = 0;
+		
 
 		public static string getType(int num)
         {
@@ -47,12 +47,28 @@ namespace WsFakePlayer
 
 			return type;
         }
+		public static bool tellraw(MCCSAPI api,string name,string text)
+        {
+			if(name == "@a")
+            {
+				return api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + text + "\"}]}");
+			}
+            else
+            {
+				return api.runcmd("tellraw \"" + name + "\" {\"rawtext\":[{\"text\":\"" + text + "\"}]}");
+			}
+			
+        }
+
         public static void init(MCCSAPI api)
         {
+			int FakePlayerNum = 0;
 			string text = System.IO.File.ReadAllText(@"plugins/WsFakePlayer/config.json");
 			JObject config = JObject.Parse(text); 
 			string webPath = config["url"].ToString();
+			Console.WriteLine(webPath);
 			WebSocket ws = new WebSocket(webPath);
+			bool firstConnect = true;
 			//建立连接
 			ws.Connect();
 
@@ -62,246 +78,225 @@ namespace WsFakePlayer
 			//OnMessage消息
 			ws.OnMessage += (sender, e) =>
 			{
-				string msg = e.ToString();
-				JObject jos = JObject.Parse(msg);
-				JObject jo = (JObject)jos["data"];
-				string packetType = jos["type"].ToString();
-                switch (packetType)
+				string msg = e.Data;
+				//转化json
+				JObject Json_Msg = JObject.Parse(msg);
+				string[] jsonin = Json_Msg.Properties().Select(item => item.Name.ToString()).ToArray();
+				if (Json_Msg != null)
                 {
-					case "list":
-						JArray jArray = (JArray)jos["data.list"];
-						int length = jArray.Count;
-						Class1.FakePlayerNum = length;
-						break;
-
-					case "add":
-						string name = jo["name"].ToString();
-						string reason = jo["reson"].ToString();
-						Boolean success = (bool)jo["success"];
-                        if (success)
-                        {
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\""+name+" added.\"}]}");
-                        }
-                        else
-                        {
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + name + " failed. reason:"+reason+"\"}]}");
-						}
-						break;
-					case "remove":
-						string rname = jo["name"].ToString();
-						string rreason = jo["reson"].ToString();
-						Boolean rsuccess = (bool)jo["success"];
-						if (rsuccess)
-						{
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + rname + " added.\"}]}");
-						}
-						else
-						{
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + rname + " failed. reason:" + rreason + "\"}]}");
-						}
-						break;
-					case "getState":
-						string sname = jo["name"].ToString();
-						string sreason = jo["reson"].ToString();
-						Boolean ssuccess = (bool)jo["success"];
-						int state = (int)jo["state"];
-						if (ssuccess)
-						{
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + sname + ':'+getType(state)+"\"}]}");
-						}
-						else
-						{
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + sname + " failed. reason:" + sreason + "\"}]}");
-						}
-						break;
-					case "getState_all":
-						JObject playersData = (JObject)jo["playersData"];
-						string[] values = playersData.Properties().Select(item => item.Value.ToString()).ToArray();
-						foreach (string plname in values) {
-							JObject plo = (JObject)playersData[plname];
-							string Pstate = getType((int)plo["state"]);
-							Boolean acc = (bool)plo["allowChatControl"];
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\""+plname+" state:"+Pstate+ " allowChatControl:"+acc.ToString()+"\"}]}");
-						}
-						break;
-					case "connect":
-						string cname = jo["name"].ToString();
-						string creason = jo["reson"].ToString();
-						Boolean csuccess = (bool)jo["success"];
-						if (csuccess)
-						{
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + cname + " connected.\"}]}");
-						}
-						else
-						{
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + cname + " failed. reason:" + creason + "\"}]}");
-						}
-						break;
-					case "disconnect":
-						string dname = jo["name"].ToString();
-						string dreason = jo["reson"].ToString();
-						Boolean dsuccess = (bool)jo["success"];
-						if (dsuccess)
-						{
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + dname + " connected.\"}]}");
-						}
-						else
-						{
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + dname + " failed. reason:" + dreason + "\"}]}");
-						}
-						break;
-					case "setChatControl":
-						string setname = jo["name"].ToString();
-						string setreason = jo["reson"].ToString();
-						Boolean setsuccess = (bool)jo["success"];
-						if (setsuccess)
-						{
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + setname + " connected.\"}]}");
-						}
-						else
-						{
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + setname + " failed. reason:" + setreason + "\"}]}");
-						}
-						break;
-					case "remove_all":
-						JArray removeJArray = (JArray)jos["data.list"];
-						foreach(string removename in removeJArray) {
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + removename + " removed.\"}]}");
-						};
-						break;
-					case "connect_all":
-						JArray connectJArray = (JArray)jos["data.list"];
-						foreach (string connectname in connectJArray)
-						{
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + connectname + " removed.\"}]}");
-						};
-						break;
-					case "disconnect_all":
-						JArray disconnectJArray = (JArray)jos["data.list"];
-						foreach (string disconnectname in disconnectJArray)
-						{
-							api.runcmd("tellraw @a {\"rawtext\":[{\"text\":\"" + disconnectname + " removed.\"}]}");
-						};
-						break;
-				}
-			};
-
-			//玩家输入指令
-			api.addBeforeActListener("onInputCommand", x =>
-			{
-				var e = BaseEvent.getFrom(x) as InputCommandEvent;
-				string[] Nocmds = { "list", "getState_all", "disconnect_all", "connect_all","remove_all"};
-				if (e == null) return true;
-                if (e.RESULT)
-                {
-					string cmds = e.cmd;
-                    if (Nocmds.Contains(cmds.Split(' ')[1]))
+					//Type相应
+                    if (jsonin.Contains("type"))
                     {
-						ws.Send("{\"type\":\""+cmds.Split(' ')[1]+ "\"}");
-						if(cmds.Split(' ')[1] == "remove_all")
-                        {
-							ws.Send("{\"type\":\"list\"}");
-						}
-                    }
-                    else
-                    {
-						string[] cmdp = cmds.Split(' ');
-						switch (cmds.Split(' ')[1])
-                        {
+						string packetType = Json_Msg["type"].ToString();
+						switch (packetType)
+						{
+							case "list":
+								JArray PlayerList = JArray.Parse(Json_Msg["data"]["list"].ToString());
+								FakePlayerNum = PlayerList.Count;
+
+								if (firstConnect)
+								{
+									Console.WriteLine("[WsFakePlayer] Connect to server success.");
+									firstConnect = false;
+								}
+								else
+								{
+									string plname = "";
+									foreach(string player in PlayerList)
+                                    {
+										plname += player + ' ';
+                                    }
+									tellraw(api, "@a", "FakePlayerList:" + plname);
+								}
+								break;
 							case "add":
-								if(cmdp[1] != null && cmdp[2] != null && cmdp[3] != null) {
-									string j = string.Format('{'+"\"type\": \"add\",\"data\": "+'{'+"\"name\": \"{0}\",\"skin\": \"{1}\",\"allowChatControl\": {2}"+"}}",cmdp[1],cmdp[2],cmdp[3]);
-									if(Class1.FakePlayerNum < (int)config["max"])
-                                    {
-										ws.Send(j);
-										ws.Send("{\"type\":\"list\"}");
-									}
-									else
-                                    {
-										api.runcmd("tellraw \"" + e.playername + "\" {\"rawtext\":[{\"text\":\"FakePlayer count max.\"}]}");
-									}
-									
+							case "remove":
+							case "connect":
+							case "setChatControl":
+								JObject addData = JObject.Parse(Json_Msg["data"].ToString());
+								string name = addData["name"].ToString();
+								Boolean success = (bool)addData["success"];
+								string reason = addData["reason"].ToString();
+                                if (success)
+                                {
+									tellraw(api, "@a", name + " " +packetType + " success.");
                                 }
                                 else
                                 {
-									api.runcmd("tellraw \"" + e.playername + "\" {\"rawtext\":[{\"text\":\"The args error\"}]}");
+									tellraw(api, "@a", name + " " + packetType + " failed reason:"+reason+'.');
+								}
+								break;
+							case "getState":
+								JObject stateData = JObject.Parse(Json_Msg["data"].ToString());
+								string statename = stateData["name"].ToString();
+								Boolean statesuccess = (bool)stateData["success"];
+								string statereason = stateData["reason"].ToString();
+								string nowState = getType((int)stateData["state"]);
+								if (statesuccess)
+								{
+									tellraw(api, "@a", statename + " " + packetType + "success. state:"+nowState);
+								}
+								else
+								{
+									tellraw(api, "@a", statename + " " + packetType + "failed reason:" + statereason + '.');
+								}
+								break;
+							case "getState_all":
+								JObject stateList = JObject.Parse(Json_Msg["data"]["playersData"].ToString());
+								string[] stateObject = stateList.Properties().Select(item => item.Name.ToString()).ToArray();
+								foreach(string pName in stateObject)
+                                {
+									JObject plNow = JObject.Parse(stateList[pName].ToString());
+									tellraw(api, "@a", pName + " state:" + getType((int)plNow["state"]) + " allowChatControl:"+ plNow["allowChatControl"].ToString());
                                 }
 								break;
-
-							case "remove":
-								if (cmdp[1] != null)
+							case "remove_all":
+							case "disconnect_all":
+							case "connect_all":
+								JArray allList = JArray.Parse(Json_Msg["data"]["list"].ToString());
+								string plName = "";
+								string typeName = packetType.Replace("_all","");
+								foreach (string player in allList)
 								{
-									string j = "{\"type\": \"remove\",\"data\": {\"name\": \"" + cmdp[1] + "\"}}";
-									if (Class1.FakePlayerNum < (int)config["max"])
+									plName += player + ' ';
+								}
+								tellraw(api, "@a", typeName+" List:" + plName);
+								break;
+							default:
+								Console.WriteLine("[WsFakePlayer] Unkown packet.");
+								break;
+						}
+					}
+					//Event事件
+					else if(jsonin.Contains("event"))
+                    {
+						JObject dataObject = JObject.Parse(Json_Msg["data"].ToString());
+						string packetType = Json_Msg["event"].ToString();
+						switch (packetType)
+                        {
+							case "add":
+							case "connect":
+							case "disconnect":
+								string name = dataObject["name"].ToString();
+								string state = getType((int)dataObject["state"]);
+								tellraw(api, "@a", name + " " + packetType + " state:" + state);
+								break;
+							case "remove":
+								string removeName = dataObject["name"].ToString();
+								tellraw(api, "@a", removeName + " " + packetType+"d.");
+								break;
+							default:
+								Console.WriteLine("[WsFakePlayer] Unkown packet.");
+								break;
+                        }
+                    }
+					
+                }
+			};
+
+			//玩家输入指令
+			api.addBeforeActListener(EventKey.onInputCommand, x => {
+				var e = BaseEvent.getFrom(x) as InputCommandEvent;
+				string[] Nocmds = { "list", "getState_all", "disconnect_all", "connect_all", "remove_all" };
+				if (e != null)
+				{
+					string cmds = e.cmd;
+					string[] cmdArray = cmds.Split(' ').ToArray();
+					if (cmdArray[0] == "/fp" && cmdArray.Length >= 2)
+					{
+                        if (true) { 
+							string[] cmdp = cmds.Split(' ').ToArray();
+							switch (cmdp[1])
+							{
+								case "add":
+									if (cmdp[2] != null && cmdp[3] != null && cmdp[4] != null)
 									{
-										ws.Send(j);
-										ws.Send("{\"type\":\"list\"}");
+										string j = "{\"type\": \"add\",\"data\": {\"name\": \""+ cmdp[2] + "\",\"skin\": \""+ cmdp[3] + "\",\"allowChatControl\": "+ cmdp[4]+ "}}";
+										if (FakePlayerNum < (int)config["max"])
+										{
+											ws.Send(j);
+											ws.Send("{\"type\":\"list\"}");
+										}
+										else
+										{
+											api.runcmd("tellraw \"" + e.playername + "\" {\"rawtext\":[{\"text\":\"FakePlayer count max.\"}]}");
+										}
+
 									}
 									else
 									{
-										api.runcmd("tellraw \"" + e.playername + "\" {\"rawtext\":[{\"text\":\"FakePlayer count max.\"}]}");
+										api.runcmd("tellraw \"" + e.playername + "\" {\"rawtext\":[{\"text\":\"The args error\"}]}");
 									}
-								}
-								else
-								{
-									api.runcmd("tellraw \"" + e.playername + "\" {\"rawtext\":[{\"text\":\"The args error\"}]}");
-								}
-								break;
+									break;
 
-							case "getState":
-								if (cmdp[1] != null)
-								{
-									string j = "{\"type\": \"getState\",\"data\": {\"name\": \"" + cmdp[1] + "\"}}";
-									ws.Send(j);
-								}
-								else
-								{
-									api.runcmd("tellraw \"" + e.playername + "\" {\"rawtext\":[{\"text\":\"The args error\"}]}");
-								}
-								break;
+								case "remove":
+									if (cmdp[2] != null)
+									{
+										string j = "{\"type\": \"remove\",\"data\": {\"name\": \"" + cmdp[2] + "\"}}";
+										ws.Send(j);
+										ws.Send("{\"type\":\"list\"}");
+									}
+									break;
 
-							case "disconnect":
-								if (cmdp[1] != null)
-								{
-									string j = "{\"type\": \"disconnect\",\"data\": {\"name\": \"" + cmdp[1] + "\",\"success\": true,\"reason\": \"\"}}";
-									ws.Send(j);
-								}
-								else
-								{
-									api.runcmd("tellraw \"" + e.playername + "\" {\"rawtext\":[{\"text\":\"The args error\"}]}");
-								}
-								break;
+								case "getState":
+									if (cmdp[2] != null)
+									{
+										string j = "{\"type\": \"getState\",\"data\": {\"name\": \"" + cmdp[2] + "\"}}";
+										ws.Send(j);
+									}
+									else
+									{
+										api.runcmd("tellraw \"" + e.playername + "\" {\"rawtext\":[{\"text\":\"The args error\"}]}");
+									}
+									break;
 
-							case "connect":
-								if (cmdp[1] != null)
-								{
-									string j = "{\"type\": \"connect\",\"data\": {\"name\": \"" + cmdp[1] + "\"}}";
-									ws.Send(j);
-								}
-								else
-								{
-									api.runcmd("tellraw \"" + e.playername + "\" {\"rawtext\":[{\"text\":\"The args error\"}]}");
-								}
-								break;
+								case "disconnect":
+									if (cmdp[2] != null)
+									{
+										string j = "{\"type\": \"disconnect\",\"data\": {\"name\": \"" + cmdp[2] + "\",\"success\": true,\"reason\": \"\"}}";
+										ws.Send(j);
+									}
+									else
+									{
+										api.runcmd("tellraw \"" + e.playername + "\" {\"rawtext\":[{\"text\":\"The args error\"}]}");
+									}
+									break;
 
-							case "setChatControl":
-								if (cmdp[1] != null && cmdp[2] != null)
-								{
-									string j = "{\"type\": \"setChatControl\",\"data\": {\"name\": \"" + cmdp[1] + "\",\"allowChatControl\": "+cmdp[2]+"}}";
-									ws.Send(j);
-								}
-								else
-								{
-									api.runcmd("tellraw \"" + e.playername + "\" {\"rawtext\":[{\"text\":\"The args error\"}]}");
-								}
-								break;
+								case "connect":
+									if (cmdp[2] != null)
+									{
+										string j = "{\"type\": \"connect\",\"data\": {\"name\": \"" + cmdp[2] + "\"}}";
+										ws.Send(j);
+									}
+									else
+									{
+										api.runcmd("tellraw \"" + e.playername + "\" {\"rawtext\":[{\"text\":\"The args error\"}]}");
+									}
+									break;
 
+								case "setChatControl":
+									if (cmdp[2] != null && cmdp[3] != null)
+									{
+										string j = "{\"type\": \"setChatControl\",\"data\": {\"name\": \"" + cmdp[2] + "\",\"allowChatControl\": " + cmdp[3] + "}}";
+										ws.Send(j);
+									}
+									else
+									{
+										api.runcmd("tellraw \"" + e.playername + "\" {\"rawtext\":[{\"text\":\"The args error\"}]}");
+									}
+									break;
+								default:
+									ws.Send("{\"type\":\"" + cmdp[1] + "\"}");
+									break;
+
+							}
 						}
-                    }
-
-                }
-                return true;
+						return false;
+					}
+				}
+				return true;
 			});
+
 		}
 
 		
@@ -317,7 +312,6 @@ namespace CSR
 			// TODO 此接口为必要实现
 			WsFakePlayer.Class1.init(api);
 			api.setCommandDescribe("fp", "FakePlayer API");
-			
 			Console.WriteLine("[WsFakePlayer] Loaded.");
 		}
 	}

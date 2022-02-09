@@ -74,4 +74,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>del E:\CSProject\WsFakePlayer\WsFakePlayer\bin\x64\Release\WsFakePlayer.csr.dll
+ren "$(TargetPath)" "WsFakePlayer.csr.dll" 
+copy "E:\CSProject\WsFakePlayer\WsFakePlayer\bin\x64\Release\WsFakePlayer.csr.dll" "E:\MCServer\1.16.40\csr"</PostBuildEvent>
+  </PropertyGroup>
 </Project>
